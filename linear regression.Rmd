@@ -1,0 +1,195 @@
+---
+title: "A04_G46086231"
+author: "Min Yang"
+date: "9/22/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##Part A
+
+```{r}
+sales <- read.csv("~/Desktop/SalesPerformance.csv")
+library(car)
+library(ggplot2)
+library(GGally)
+library(MASS)
+```
+
+###regression model with all variables
+```{r}
+regModel <- lm(Profit ~ Dist+Area+Popn+Outlets+Commis, data = sales)
+summary(regModel)
+plot(regModel)
+```
+
+We observed from the plot that there are three point 19, 32, and 47 stand out, but they did not cross the 0.5 cook's distance line and did not create a significant association. Also, consider the data is collected on 51 representitives, these outliers are not incorrectly measure data, and I will discuss them in part c whether they affect the model assumption.
+
+From the result, Area and Commis are significant in this model while Dist, Outlets and Popn do not show significant relationship with profit. 
+
+###regression model without Outlets
+```{r}
+regModel <- lm(Profit ~ Dist+Area+Popn+Commis, data = sales)
+summary(regModel)
+```
+
+This model again shows Commission has strong relationship with profit.
+
+###regression model without Commis
+```{r}
+regModel <- lm(Profit ~ Dist+Area+Popn+Outlets, data = sales)
+summary(regModel)
+```
+
+From this model, outlets does not show a significant effect on profit. 
+
+###Combination effect of outlets and commis
+```{r}
+anova <- aov(Profit ~ Outlets*Commis, data = sales)
+summary(anova)
+```
+
+The interaction term is not significant, so there is no combination effect of commis and outlets.
+
+###profit vs. profit/outlet as depedent variable
+```{r}
+regModel <- lm(Profit/Outlets ~ Dist+Area+Popn+Commis, data = sales)
+summary(regModel)
+```
+
+With only profit as dependent variable, the adjusted R-squared value is 0.662, and a f-value of 17.63. With profit/outltes, the R-squared value is 0.5638, as the higher the R-squared value, the better the model explains the data, so profit itself works better as a dependent variable.
+
+The manager suspect district area, district population, number of outlets, commission status, have individual or combined effect on profit. We tested that commis, area has a strong effect on profit, while population, outlets seems to have less effect. 
+
+##Part B
+```{r}
+regModel <- lm(Profit ~ Dist+Area+Popn+Outlets+Commis, data = sales)
+vif(regModel)
+```
+
+The vif value of Area, Population and outlets are slightly higher than the other variables, so there might be correlation between theses variables. But since none of these variables exceed 10, it is not obivious to conclude a multicollinearity at this point. We can test it with a correlation visualization and use stepwise method to see what varible form a best model for this dataset. 
+
+```{r}
+ggpairs(sales)
+```
+
+From the correlation visualization, area and population has a moderate correlation, as well as outlet and population, area and outlet. It is reasonable as larger district area tend to have larger population, and larger population attracts more outlets to open in that district.
+
+
+## now we use a stepwise method to generate a model fit this data best 
+```{r}
+fitstep <- lm(Profit~Dist+Area+Popn+Outlets+Commis, data = sales)
+step <- stepAIC(fitstep, direction="both")
+step$anova # display results
+```
+
+## test the model generate from stepwise method 
+```{r}
+stepModel <- lm(Profit ~ Area + Popn + Commis, data = sales)
+summary(stepModel)
+```
+
+With stepwise method, we find the model with smallest AIC is with variable area, popn, and commis, with a R-squared value of 0.6496, which is just slightly lower than the R-squared value of orginal model of 0.662. So this model is significant, thus we can omit varible outlets and dist. 
+
+In addition, previously we conclude that population and area has a moderate correlation, so we want to test if this correlation is significant that we need to remove one variable.
+
+```{r}
+Model <- lm(Profit ~ Popn, data = sales)
+summary(Model)
+```
+
+population individually is very significant to profit.
+
+```{r}
+anova <- aov(Profit ~ Area*Popn, data = sales)
+summary(anova)
+```
+
+There is no interaction effect between Area and Population, so our assumption that area and population has a positive relationship is not necessary true in this case, a small district can still have larger population with a higher density. So we should not remove Popn from the variable list. 
+
+##Part C
+```{r}
+plot(stepModel)
+```
+
+##test model variable normality
+```{r}
+shapiro.test(sales$Area)
+shapiro.test(sales$Popn)
+shapiro.test(sales$Commis)
+shapiro.test(sales$Profit)
+```
+
+From the shapiro test for normality, variable area, popn, and commis have p-values less than 0.05, so they are normally distribued, while profit has a p value of 0.17 which is greater than 0.05, so we cannot conlude that profit is normally distributed. To fix this violation, we can try log of profit. 
+
+```{r}
+sales$logProfit <-log(sales$Profit)
+shapiro.test(sales$logProfit)
+```
+
+After we take a log of the profit, the p-value is less than 0.05, so we can say it is normally distributed. 
+
+###perform a model with log of profit 
+```{r}
+fitstep <- lm(logProfit~Dist+Area+Popn+Outlets+Commis, data = sales)
+step <- stepAIC(fitstep, direction="both")
+step$anova # display results
+```
+
+```{r}
+stepModel <- lm(logProfit ~ Area + Popn + Commis, data = sales)
+summary(stepModel)
+anova <-aov(logProfit ~ Area + Popn + Commis, data = sales)
+summary(anova)
+```
+
+ With logProfit, we got a model with R-squred value of 0.7161. Although stepwise method includes population as a independent variable, it is only significant at 0.1 level, and the anova shows it is not significant, so we can omit population in this model. 
+ 
+ 
+For the assumption of independence, the data are collected from different 51 representitives, so they are independent. 
+
+### test equal variance assumption
+```{r}
+var.test(sales$Commis, sales$Profit, alternative = "two.sided")
+var.test(sales$Area, sales$Profit, alternative = "two.sided")
+var.test(sales$Popn, sales$Profit, alternative = "two.sided")
+```
+
+The equal variance assumption is satisfied. 
+
+###significance of outlier
+
+As mentioned before, there are three outliers, as we test before, including them do not violate the model assumption, but we can still run a regression model without them and see how the model performs.
+```{r}
+newsales <-sales[-c(19,32,47), ]
+fitstep <- lm(logProfit~Dist+Area+Popn+Outlets+Commis, data = newsales)
+step <- stepAIC(fitstep, direction="both")
+step$anova # display results
+```
+```{r}
+stepModel <- lm(logProfit ~ Area + Outlets + Commis, data = newsales)
+summary(stepModel)
+```
+
+Without the outliers, it turns out that outlets become significant, the variables chosen from stepwise method are area, outltes, and commis. But outlets is only significant at 0.05 level, so it is not as significant as the area and commis's effect on profit. The r-squared value is 0.8321, which is higher than 0.7161 from the model with all data. Nonetheless, both models provide the conclusion that area and commis are significant on profit.
+
+##Part D Report 
+
+From our study, we found that area and commission are the two most important factors in evaluating the field sales representatives’ performance. We find there is a moderate correlation between population and area, which means the effect of population on profit is partially dependent on the size of the district. It is reasonable since a large district tends to contain a larger population. So the population is not a mandatory variable to include in our model as it can be explained by area. In addition, we find the data of profit is not normally distributed. In statistics, we need to make sure variables are normally distributed, selected independently, and have equal variance in order to build a valid model. To normalize the profit, we take a log on profit which is decrease the scale of the dataset to achieve our goal. All the other assumptions of making a regression analysis are satisfied. all the variables contained in the model are significant, as they all have a very small standard deviation close to 0. The model’s p-value is close to 0 and the R-squared value is higher than other models. So we are confident that this model with its explanatory variables together significantly explains the profit which is our dependent variable of interest in evaluating representatives’ performance. 
+
+For your first concern about lower profit regarding how large one district is. We do find a significant relationship between area and profit. As you predicted that large district is difficult due to extra travel time. We find that area has a negative coefficient which implies that with area increase, the profit will decrease. 
+
+Regarding your suspect that commission only representatives with many outlets are highly productive. We find that the commission has a significant effect on the representative’s performance but outlets’ effect on profit is very weak. Our model shows that the commission has a positive relationship with profit, which means if the representative is full-commission, he/she will be more productive. There is no significant evidence to prove that outlet and commission have combination effect on profit. 
+
+With your third concern about measuring profit per outlet, our model turns out that it is not necessary. In statistics modeling, we evaluate the goodness of a model by a value called R-squared value. R-squared value describes the percentage of the data is explained by the model, the higher the percentage, the better the model is. When we measure profit, we get an R-squared value of 0.662, while for the model with profit per outlet, we get 0.564, so measuring only profit actually allows us to build a better model.  
+
+
+
+
+
+
+
+
+

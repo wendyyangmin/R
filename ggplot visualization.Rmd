@@ -1,0 +1,165 @@
+---
+title: "A03_G46086231"
+author: "Min Yang"
+date: "9/14/2018"
+output: html_document
+---
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+kf <- read.csv("~/Desktop/kicksfootball.csv") #input data
+kf$g <- ifelse(kf$goal=="Y", 1, 0)  #convert Y and N to 1, 0
+```
+
+##Part A
+```{r}
+sum(kf$g)/length(kf$g) #overall probability of hit field goal 
+```
+```{r}
+match <-subset(kf$g, kf$practiceormatch=="M") #subset goal of matching game 
+prac <-subset(kf$g, kf$practiceormatch=="P") #subset goal of practice 
+probmatch <- sum(match)/length(match) #calculate probability of hit goal in match
+probprac <- sum(prac)/length(prac) #calculate probability of hit goal in practice
+probmatch
+probprac
+```
+
+The overall probabtily of Melvin to score a goal is 0.779,the probability of him hit a goal during practice session is 0.788, and the probability of him hit a goal during matches is 0.701.  
+
+```{r}
+gp<- plot(g~yards,data=kf,
+     xlab="yards",
+     ylab="Probability of a goal",
+     main="Overall Performance")
+log = glm(g ~ yards,
+            data=kf,
+            family=binomial)
+curve(predict(log,
+              data.frame(yards=x),
+              type="resp"),
+     add=TRUE)
+```
+
+From the plot, we can see the trend that the probability of a goal decrease as yards increase, so I would predict Melvin has a high probability around 90% if he kick at 20 yards, and a decreasing probability of hit the goal as yards increase, and around 30% of success at 60 yards.  
+
+##Part B
+Melvin’s attempts in matches is different from his performance in practice, he generally has a better performace in practice than match.
+
+###a) 
+
+### i. Practice
+```{r}
+prac <- kf %>% select(practiceormatch, g, yards)%>% filter(practiceormatch == "P")
+prac.log = glm(g ~ yards,
+            data=prac,
+            family=binomial)
+summary(prac.log)
+```
+
+logistic function for practice: y = 4.49 - 0.082x
+
+
+### ii. Match
+```{r}
+match <- kf %>% select(practiceormatch, g, yards)%>% filter(practiceormatch == "M")
+match.log = glm(g ~ yards,
+            data=match,
+            family=binomial)
+summary(match.log)
+```
+
+logistic function for match: y = 4.26 - 0.088x
+
+##b) probability in practice
+### 20 yards
+```{r}
+inp <- c(20)
+newdata = data.frame(yards=inp)
+predict(prac.log, newdata, type="response")
+```
+
+In practice, the probability of Melvin scoring a goal from 20 yards is 0.9451.
+
+### 40 yards
+```{r}
+inp <- c(40)
+newdata = data.frame(yards=inp)
+predict(prac.log, newdata, type="response")
+```
+
+In practice, the probability of Melvin scoring a goal from 40 yards is 0.7683.
+
+### 60 yards
+```{r}
+inp <- c(60)
+newdata = data.frame(yards=inp)
+predict(prac.log, newdata, type="response")
+```
+
+In practice, the probability of Melvin scoring a goal from 60 yards is 0.3897.
+
+##c) probability in match 
+### 20 yards
+```{r}
+inp <- c(20)
+newdata = data.frame(yards=inp)
+predict(match.log, newdata, type="response")
+```
+
+In match, the probability of Melvin scoring a goal from 20 yards is 0.9236.
+
+### 40 yards
+```{r}
+inp <- c(40)
+newdata = data.frame(yards=inp)
+predict(match.log, newdata, type="response")
+```
+
+In match, the probability of Melvin scoring a goal from 40 yards is 0.6737.
+
+### 60 yards
+```{r}
+inp <- c(60)
+newdata = data.frame(yards=inp)
+predict(match.log, newdata, type="response")
+```
+
+In match, the probability of Melvin scoring a goal from 60 yards is 0.2606.
+
+```{r}
+matchplot <- plot(g~yards,data=match,
+     xlab="yards",
+     ylab="Probability of a goal",
+     main="Match")
+curve(predict(match.log,
+              data.frame(yards=x),
+              type="resp"),
+     add=TRUE)
+```
+
+```{r}
+plot(g~yards,data=prac,
+     xlab="yards",
+     ylab="Probability of a goal",
+     main="Practice")
+curve(predict(prac.log,
+              data.frame(yards=x),
+              type="resp"),
+     add=TRUE)
+```
+
+##Part C
+```{r}
+  g<- ggplot(kf) + aes(x=yards,y=g, color= practiceormatch)+labs(title="Melvin Performance with Comparison in Match and Practice",x="Yards",y="Probability of a goal")+
+  geom_point(data = match, size = 2)+
+  geom_point(data = prac, size = 1)
+ g+ stat_smooth(method="glm", method.args = list(family="binomial"), data = match, formula = y ~ x, se=FALSE)+
+  stat_smooth(method="glm", method.args = list(family="binomial"), data = prac, formula = y ~ x, se=FALSE)
+
+```
+
+
+

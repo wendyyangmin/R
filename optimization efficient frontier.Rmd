@@ -1,0 +1,57 @@
+---
+title: "A07_G46086231"
+author: "Min Yang"
+date: "10/17/2018"
+output: html_document
+---
+##Generate data 
+```{r}
+## Quadratic programming using quadprog()
+# Markowitz formulation
+library(quadprog)
+mu_return_vector <- c(0.05, 0.04, 0.06) 
+sigma <- matrix(c(0.01, 0.002, 0.005, 
+                  0.002, 0.008, 0.006, 
+                  0.005, 0.006, 0.012), 
+                nrow=3, ncol=3)
+D.Matrix <- 2*sigma
+d.Vector <- rep(0, 3)
+A.Equality <- matrix(c(1,1,1), ncol=1)
+A.Matrix <- cbind(A.Equality, mu_return_vector, 
+                  diag(3))
+#use for loop to generate expeted return with corresponding risk
+returnval = matrix(ncol=1)
+risk = matrix(ncol=1)
+i=1
+for (x in seq(0.035,0.06,0.001)){ 
+b.Vector <- c(1, x, rep(0, 3))
+out <- solve.QP(Dmat=D.Matrix, dvec=d.Vector, 
+                Amat=A.Matrix, bvec=b.Vector, 
+                meq=1)
+returnval[i]=x
+risk[i]=out$value
+i=i+1
+}
+table(returnval)
+table(risk)
+```
+
+###Plot using default plot method
+```{r}
+plot(risk,returnval, main="Efficient Frontier", xlab="Risk Appetite", ylab="Expected Return", type="l", col="red")
+```
+
+###Generate a data.frame for plotting using ggplot 
+```{r}
+library(ggplot2)
+data <- cbind(returnval,risk)
+data <-data.frame(data)
+data
+```
+
+###using ggplot to plot the efficient frontier 
+```{r}
+g <- ggplot(data) + aes(x=risk,y=returnval)+labs(title="Efficient Frontier",x="Risk Appetite",y="Expected Return") + geom_line(data = data,col='red')
+g
+```
+

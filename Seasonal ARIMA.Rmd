@@ -1,0 +1,79 @@
+---
+title: "STAT4181 HW5 Min Yang"
+output:
+  pdf_document: default
+  word_document: default
+  html_notebook: default
+---
+
+###A. Seasonal ARIMA
+
+####1.
+```{r}
+library(zoo)
+library(rdatamarket)
+library(forecast)
+library(astsa)
+```
+
+####3.
+```{r}
+data<-dmseries("https://datamarket.com/data/set/22pw/monthly-lake-erie-levels-1921-1970#!ds=22pw&display=line")
+str(data)
+```
+
+####4.
+```{r}
+plot.ts(data)
+```
+```{r}
+difference<-diff(data,12)
+tsdisplay(difference,lag.max=500)
+```
+
+The acf plot suggests there that the data are highly correlated, and there are very strong autocorrelation. Both positive and negative autocorrelation occure, with a negative followed by a positive. A negative autocorrelation means the lake level decrease and positive autocorrelation means the lake level increase. So there is a seasonality. 
+
+
+####5.
+```{r}
+auto.arima(data, stepwise = FALSE)
+```
+
+The best model is ARIMA(0,1,2)(2,0,0)[12].
+
+####6.
+```{r}
+sarima(data,p = 0,d = 1,q = 2,P=2,D = 0,Q = 0,S = 12,details=FALSE)
+```
+
+The estimated generating equation:
+$$
+(1-0.3076B^{12}-0.3771B^{24}) (1-0.2599B-0.1074B^2) \nabla^1 x_t = 0.0006 + w_t,
+$$
+
+
+###B. Linear Regression
+####1.
+```{r}
+forest<-read.csv("~/desktop/forestfires.csv",header=TRUE)
+```
+
+####2.
+```{r}
+lm_model<-lm(RH~temp,forest)
+```
+
+####3.
+```{r}
+plot(forest$temp,forest$RH,xlab="Temperature", ylab="Relative Humidity", 
+     main="Relative Humidity vs. Temperature")
+abline(lm_model,col=2)
+```
+
+####4.
+```{r}
+summary(lm_model)
+```
+
+The estimated equation is RH=72.2828-1.482temp.
+With p-value <0.0001, the regression model is significant.But the r-square value shows the model only explains 27.81% of the data. Since this is a simple linear regression model, there should be other varaibles that affect the relative humidity. 

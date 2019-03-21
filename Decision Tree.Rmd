@@ -1,0 +1,228 @@
+---
+title: "STAT4198 HW8 Min Yang"
+output:
+  word_document: default
+  pdf_document: default
+  html_notebook: default
+---
+###1.
+```{r}
+Carseats <-read.csv("~/desktop/Carseats.csv",head=T)
+library(tree)
+```
+
+###2.
+```{r}
+ High=ifelse(Carseats$Sales <=8," No"," Yes ")
+```
+
+```{r}
+Carseats =data.frame(Carseats[,-1] ,High)
+summary(Carseats)
+```
+
+###3.
+```{r}
+ tree.carseats =tree(High~.,data=Carseats )
+```
+
+###Q4
+```{r}
+ summary (tree.carseats )
+```
+
+The variables used in the trees are ShelveLoc, Price, Income, CompPrice, Population, Advertising, and Age. The number of terminal nodes is 27, residual mean diviance is 0.4575, and misclassification error rate is 0.09.
+
+###Q5
+```{r}
+ plot(tree.carseats )
+ text(tree.carseats ,pretty =0)
+```
+```{r}
+ library(rpart)
+fit <-rpart(High~.,data = Carseats)
+plot(fit, uniform=TRUE, 
+  	main="Classification Tree for new X")
+text(fit, use.n=TRUE, all=TRUE, cex=.8)
+```
+new X: ShelveLoc=Good ->no ->Price=131 ->no -> no, outcome for new X is No. 
+
+```{r}
+tree.carseats
+```
+
+###6.
+```{r}
+ntrain=200 
+
+ set.seed(2)
+ train=sample(1: nrow(Carseats ),ntrain )
+ Carseats.test=Carseats[-train ,]
+  tree.carseats =tree(High~.,data=Carseats[train,] )
+ summary (tree.carseats )
+```
+
+###Q7.
+```{r}
+  High.test=High[-train ]
+
+  tree.pred=predict(tree.carseats, Carseats.test,type="class")
+  table(tree.pred ,High.test)
+  
+```
+```{r}
+(30+27) /200
+```
+
+The testing missclassification rate is 0.285, and the training missclassification rate is 0.105. There is a difference between two errors may be due to small sample sets, also the data split randomly, so it is likely that there will be some data in the neighborhood.  
+
+###Q8
+Trees can be viewed as providing a probability model for individuals class membership. So, at each node i, we have a probability distribution pik over the classes. The leaves of the tree give us a random sample nik from a multinomial distribution specified by pik
+. We can thus define the deviance of a tree, D as the sum over all leaves of Di=−2sum(kniklog(pik)).
+"Residual mean deviance" is the "Total residual deviance" divided by the "Number of observations" - "Number of Terminal Nodes".
+
+
+###Q9.
+```{r}
+ set.seed (3)
+ cv.carseats =cv.tree(tree.carseats ,FUN=prune.misclass )
+ names(cv.carseats )
+```
+```{r}
+ cv.carseats
+```
+```{r}
+plot(cv.carseats$size ,cv.carseats$dev ,type="b")
+```
+The tree with 9 terminal nodes results in the lowest cross-validation error rate, with 50 cross-validation errors, so it's the best size
+
+###10.
+```{r}
+  prune.carseats =prune.misclass (tree.carseats ,best =9)
+  plot(prune.carseats)
+  text(prune.carseats ,pretty =0)
+```
+```{r}
+summary(prune.carseats)
+```
+
+```{r}
+tree.pred=predict (prune.carseats , Carseats.test ,type="class")
+table(tree.pred,High.test)
+```
+```{r}
+(22+24)/200
+```
+
+With prunned model, the training misclassification rate is 0.155, and the testing misclassfication rate is 0.23. They are different from the one obtained from the unprunned model. While the training misclassfication rate is similar, the testing misclassfication rate for prunne model is a lot lower. So prunned model is better. 
+
+###Q11.
+```{r}
+ tree.carseats =tree(High~.,data=Carseats )
+  prune.carseats =prune.misclass (tree.carseats ,best =9)
+  plot(prune.carseats)
+  text(prune.carseats ,pretty =0)
+```
+
+There is difference compare to the original tree. The new model reduces the US,Education, and Population variables. The testing misclassification rate of
+
+###Q12.
+```{r}
+  summary(prune.carseats)
+  tree.pred=predict (prune.carseats , Carseats.test ,type="class")
+table(tree.pred,High.test)
+(10+15)/200
+```
+
+I would choose the new model with  9 nodes,it has a lower testing misclassification rate of 0.125,  and fewer nodes which help reduce the overfitting.
+
+###Q13.
+```{r}
+library(randomForest)
+```
+```{r}
+bag.carseat =randomForest(High~.,data=Carseats,subset =train ,
+mtry=4, ntree =200,importance=TRUE)
+ tree.pred = predict ( bag.carseat ,newdata =Carseats[-train ,],type="class")
+table(tree.pred ,High.test)
+mean(((tree.pred==" Yes ") -(High.test==" Yes "))^2)
+```
+```{r}
+bag.carseat =randomForest(High~.,data=Carseats,subset =train ,
+mtry=6, ntree =100,importance=TRUE)
+ tree.pred = predict ( bag.carseat ,newdata =Carseats[-train ,],type="class")
+table(tree.pred ,High.test)
+mean(((tree.pred==" Yes ") -(High.test==" Yes "))^2)
+```
+```{r}
+bag.carseat =randomForest(High~.,data=Carseats,subset =train ,
+mtry=6, ntree =500,importance=TRUE)
+ tree.pred = predict ( bag.carseat ,newdata =Carseats[-train ,],type="class")
+table(tree.pred ,High.test)
+mean(((tree.pred==" Yes ") -(High.test==" Yes "))^2)
+```
+```{r}
+bag.carseat =randomForest(High~.,data=Carseats,subset =train ,
+mtry=3, ntree =600,importance=TRUE)
+ tree.pred = predict ( bag.carseat ,newdata =Carseats[-train ,],type="class")
+table(tree.pred ,High.test)
+mean(((tree.pred==" Yes ") -(High.test==" Yes "))^2)
+```
+```{r}
+bag.carseat =randomForest(High~.,data=Carseats,subset =train ,
+mtry=3, ntree =100,importance=TRUE)
+ tree.pred = predict ( bag.carseat ,newdata =Carseats[-train ,],type="class")
+table(tree.pred ,High.test)
+mean(((tree.pred==" Yes ") -(High.test==" Yes "))^2)
+```
+
+Among five combinations, my choice of mtry = 6 and ntree=100 gives the lowest testing misclassification rate of 0.155. 
+mtry is the number of variables randomly sampled as candidates at each split.
+ntree is the number of trees to grow. 
+
+###Q14.
+```{r}
+library(gbm)
+```
+```{r}
+set.seed (1)
+ boost.carseat =gbm((High==" Yes ")~.,data=Carseats[train ,],
+distribution="bernoulli", n.trees=8000, interaction.depth =2)
+```
+```{r}
+tree.pred = predict(boost.carseat,newdata =Carseats[-train ,],n.trees=5000,
+type="link")
+
+tree.pred=tree.pred>0.5
+table(tree.pred ,High.test)
+mean(((tree.pred=="TRUE") -(High.test==" Yes "))^2)
+```
+```{r}
+tree.pred = predict(boost.carseat,newdata =Carseats[-train ,],n.trees=4000,
+type="link")
+
+tree.pred=tree.pred>0.5
+table(tree.pred ,High.test)
+mean(((tree.pred=="TRUE") -(High.test==" Yes "))^2)
+```
+```{r}
+tree.pred = predict(boost.carseat,newdata =Carseats[-train ,],n.trees=3000,
+type="link")
+
+tree.pred=tree.pred>0.5
+table(tree.pred ,High.test)
+mean(((tree.pred=="TRUE") -(High.test==" Yes "))^2)
+```
+```{r}
+tree.pred = predict(boost.carseat,newdata =Carseats[-train ,],n.trees=8000,
+type="link")
+
+tree.pred=tree.pred>0.5
+table(tree.pred ,High.test)
+mean(((tree.pred=="TRUE") -(High.test==" Yes "))^2)
+```
+
+The best number of boosted trees is 5000 with a testing missclassification rate of 0.155. THe larger the n.trees, the lower the missclassification rate. 
+
+###Q15.
+Boosting worked best for the dataset careseats as it has a lower missclassfication rate. With bagging, we lose the simple interpretation of classification tree, so the final classifier is a weighted sum of trees which does not really represent by a single tree. While with AdaBoost, the computation is straightforward, and since we grow small trees,each step  can be donw relatively quickly.   

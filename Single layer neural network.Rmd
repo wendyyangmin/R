@@ -1,0 +1,403 @@
+---
+title: "4198 HW6 Min Yang"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+  html_notebook: default
+---
+---
+title: "HW6 Min Yang"
+output: html_notebook
+---
+
+###1.2
+```{r}
+adult <- read.csv(file = "~/desktop/Clem3Training.csv",
+stringsAsFactors=TRUE)
+# We will work with first 10000 variables.
+adult <- adult[1:10000,]
+# Create indicator variables
+
+adult$sex2=c(rep(0, length(adult$income)))
+
+adult$race_white=adult$race_black=adult$race_as.pac.is=
+adult$race_am.in.esk=adult$wc_gov=adult$wc_self=
+adult$wc_priv=adult$ms_marr=adult$ms_div=adult$ms_sep=
+adult$ms_wid=adult$income_g50K=adult$sex2
+
+for (i in 1:length(adult$income)) {
+if(adult$income[i]==">50K.")
+adult$income_g50K[i]<-1
+if(adult$sex[i] == "Male")
+adult$sex2[i] <- 1
+if(adult$race[i] == "White") adult$race_white[i] <- 1
+if(adult$race[i] == "Amer-Indian-Eskimo") adult$race_am.in.esk[i] <- 1
+if(adult$race[i] == "Asian-Pac-Islander") adult$race_as.pac.is[i] <- 1
+if(adult$race[i] == "Black") adult$race_black[i] <- 1
+if(adult$workclass[i] == "Gov") adult$wc_gov[i] <- 1
+if(adult$workclass[i] == "Self") adult$wc_self[i] <- 1
+if(adult$workclass[i] == "Private" ) adult$wc_priv[i] <- 1
+if(adult$marital.status[i] == "Married") adult$ms_marr[i] <- 1
+if(adult$marital.status[i] == "Divorced" ) adult$ms_div[i] <- 1
+if(adult$marital.status[i] == "Separated" ) adult$ms_sep[i] <- 1
+if(adult$marital.status[i] == "Widowed" ) adult$ms_wid[i] <- 1
+}
+
+
+# Minimax transform the continuous variables
+adult$age_mm <- (adult$age - min(adult$age))/(max(adult$age)-min(adult$age))
+adult$edu.num_mm <- (adult$education.num - min(adult$education.num))/
+(max(adult$education.num)-min(adult$education.num))
+adult$capital.gain_mm <- (adult$capital.gain - min(adult$capital.gain))/
+(max(adult$capital.gain)- min(adult$capital.gain))
+adult$capital.loss_mm <- (adult$capital.loss - min(adult$capital.loss))/
+(max(adult$capital.loss)- min(adult$capital.loss))
+adult$hours.p.w_mm <- (adult$hours.per.week - min(adult$hours.per.week))/
+(max(adult$hours.per.week)-min(adult$hours.per.week))
+newdat <- as.data.frame(adult[,-c(1:15,31:32)]) # Get rid of the variables we no longer need
+```
+
+```{r}
+ncol(newdat)
+nrow(newdat)
+```
+
+###3.
+```{r}
+library("nnet") # Requires package nnet
+
+newdat_training<-newdat[1:8000,]
+newdat_testing<-newdat[8001:10000,]
+```
+
+```{r}
+library('nnet')
+```
+
+###4.
+```{r}
+logistic.model <- glm(income_g50K~., data = newdat_training, 
+family = binomial())
+prediction <- predict(logistic.model, newdat_testing, type = "response")
+table(newdat_testing$income_g50K , prediction >= 0.5)
+```
+```{r}
+misscls.test<-sum((prediction-newdat_testing$income_g50K)^2)/
+length(newdat_testing$income_g50K)
+misscls.test
+```
+
+###5.
+I choose seed=550，test with node= 5,6,7,8. maxit=500,600,700,750,800,1000. decay=0,0.1,0.2,0.4,0.6
+```{r}
+set.seed(550)
+myNewFrame <- data.frame(node = integer(0),maxit = integer(0), decay = integer(0) ,misscls.train = integer(0), misscls.test = integer(0))
+
+for (i in c(5, 6, 7, 8)) {
+  for (m in c(500, 600, 700, 750,800, 1000)) {
+    for (d in c(0, 0.1, 0.2, 0.4,0.6)) {
+    net.dat <- nnet(income_g50K~., data = newdat_training, size = i, decay = d, maxit = m)
+    #table(round(net.dat$fitted.values, 1))
+    estimated_income_g50K=as.numeric(net.dat$fitted.values>0.5)
+    T = table(estimated_income_g50K,newdat_training$income_g50K)
+    misscls.train<-sum((estimated_income_g50K-newdat_training$income_g50K)^2)/length(newdat_training$income_g50K)
+    misscls.train
+    presdicted.testing<-as.numeric(predict(net.dat,newdat_testing )>0.5)
+    Ttest = table(presdicted.testing, newdat_testing$income_g50K)
+    misscls.test<-sum((presdicted.testing-newdat_testing$income_g50K)^2)/length(newdat_testing$income_g50K)
+    misscls.test
+  
+    df <- data.frame(i, m, d, misscls.train, misscls.test)
+    names(df)<-c("node", "maxit", "decay", "misscls.train", "misscls.test")
+    myNewFrame <- rbind(myNewFrame, df)
+  }
+ } 
+}
+myNewFrame
+```
+
+Among all the models that converged, there are three models have smallest value below 1000.
+The model with node=5, maxit=800, decay=0 has the smallest final value converged at 990.400979. Its training missclassification rate is 18.65%, and validation missclassfication rate is 17.95%
+The model with node=7, maxit=750, decay=0 has the smallest final value converged at 978.248201. Its training missclassification rate is 18.44%, and validation missclassfication rate is 18.8%
+The model with node=7, maxit=800, decay=0 has the smallest final value converged at 980.799262. Its training missclassification rate is 18.29%, and validation missclassfication rate is 18.6%
+So the best model is seed=550, size=5, decay=0.0, maxit=800, with a final value of 982.66 at 490 iteration. With a validation missclassification rate of 18.5%, training missclassification rate of 18.4%.
+
+###6.
+female
+```{r}
+m = dim(newdat_training)[2]
+means = NA
+for (i in 1:m)
+{
+means[i]=mean(newdat_training[,i])
+}
+
+FemaleMarriedPrivWh.pred.vector<-c(rep(0,5),rep(1,2),rep(0,5),1,
+means[14],means[15],means[16])
+mean.vector<-seq(0,1,0.01)
+nm<-length(mean.vector)
+FemaleMarriedPrivWh.sens.age<-data.frame(matrix(rep(FemaleMarriedPrivWh.pred.vector,each=nm),nrow=nm))
+colnames(FemaleMarriedPrivWh.sens.age)<-names(newdat_training)
+FemaleMarriedPrivWh.sens.age[,14]<-mean.vector
+FemaleMarriedPrivWh.sens.age.probs<-predict(net.dat,FemaleMarriedPrivWh.sens.age)
+FemaleMarriedPrivWh.sens.age.probs
+
+```
+
+Male
+```{r}
+MaleMarriedPrivWh.pred.vector<-c(1,rep(0,4),rep(1,2),rep(0,5),1,means[14],means[15],means[16])
+MaleMarriedPrivWh.sens.age<-data.frame(matrix(rep(MaleMarriedPrivWh.pred.vector,each=nm),nrow=nm))
+colnames(MaleMarriedPrivWh.sens.age)<-names(newdat_training)
+MaleMarriedPrivWh.sens.age[,14]<-mean.vector
+MaleMarriedPrivWh.sens.age.probs<-predict(net.dat,MaleMarriedPrivWh.sens.age)
+MaleMarriedPrivWh.sens.age.probs
+```
+
+```{r}
+plot(mean.vector*(max(adult$age)-min(adult$age))+ min(adult$age),
+FemaleMarriedPrivWh.sens.age.probs,ylim=c(0,0.8),type="l",xlab="age",
+ylab="estimated probability",main="Married White Male vs. Married White Female")
+
+points(mean.vector*(max(adult$age)-min(adult$age))+ min(adult$age),
+MaleMarriedPrivWh.sens.age.probs,xlab="age",ylab="estimated probability" )
+```
+
+The line is female, the points line is male. There is a monotone relation between age and probability of income, the probablity increase and reaching to 0.6 with age increase. Two lines are almost parallel and there is a clear gap between two genders with race and marital status same. It indicates income inequality between gender. Male has a higher probability than female in all ages. 
+
+###change race to black
+```{r}
+m = dim(newdat_training)[2]
+means = NA
+for (i in 1:m)
+{
+means[i]=mean(newdat_training[,i])
+}
+
+BFemaleMarriedPrivWh.pred.vector<-c(rep(0,5),rep(1,2),rep(0,4),1,0,
+means[14],means[15],means[16])
+mean.vector<-seq(0,1,0.01)
+nm<-length(mean.vector)
+BFemaleMarriedPrivWh.sens.age<-data.frame(matrix(rep(BFemaleMarriedPrivWh.pred.vector,each=nm),nrow=nm))
+colnames(BFemaleMarriedPrivWh.sens.age)<-names(newdat_training)
+BFemaleMarriedPrivWh.sens.age[,14]<-mean.vector
+BFemaleMarriedPrivWh.sens.age.probs<-predict(net.dat,BFemaleMarriedPrivWh.sens.age)
+
+
+BMaleMarriedPrivWh.pred.vector<-c(1,rep(0,4),rep(1,2),rep(0,4),1,0,means[14],means[15],means[16])
+BMaleMarriedPrivWh.sens.age<-data.frame(matrix(rep(BMaleMarriedPrivWh.pred.vector,each=nm),nrow=nm))
+colnames(BMaleMarriedPrivWh.sens.age)<-names(newdat_training)
+BMaleMarriedPrivWh.sens.age[,14]<-mean.vector
+BMaleMarriedPrivWh.sens.age.probs<-predict(net.dat,BMaleMarriedPrivWh.sens.age)
+
+
+plot(mean.vector*(max(adult$age)-min(adult$age))+ min(adult$age),
+BFemaleMarriedPrivWh.sens.age.probs,ylim=c(0,0.8),type="l",xlab="age",
+ylab="estimated probability",main="Married Black Male vs. Married Black Female")
+
+points(mean.vector*(max(adult$age)-min(adult$age))+ min(adult$age),
+BMaleMarriedPrivWh.sens.age.probs,xlab="age",ylab="estimated probability" )
+
+```
+
+The line is female, the points line is male. Similer to the white group, there is a monotone b relation between age and probability of income greater than 50K. For both genders, the probablity increase with age increase, the rate slow down after age 60 and reach stable. Two lines are parallel and there is a clear gap between two lines which indicates income inequality between gender. 
+
+###change married to single
+```{r}
+m = dim(newdat_training)[2]
+means = NA
+for (i in 1:m)
+{
+means[i]=mean(newdat_training[,i])
+}
+
+FemaleSinglePrivWh.pred.vector<-c(rep(0,6),rep(1,1),rep(0,5),1,
+means[14],means[15],means[16])
+mean.vector<-seq(0,1,0.01)
+nm<-length(mean.vector)
+FemaleSinglePrivWh.sens.age<-data.frame(matrix(rep(FemaleSinglePrivWh.pred.vector,each=nm),nrow=nm))
+colnames(FemaleSinglePrivWh.sens.age)<-names(newdat_training)
+FemaleSinglePrivWh.sens.age[,14]<-mean.vector
+FemaleSinglePrivWh.sens.age.probs<-predict(net.dat,FemaleSinglePrivWh.sens.age)
+
+
+MaleSinglePrivWh.pred.vector<-c(1,rep(0,5),rep(1,1),rep(0,5),1,means[14],means[15],means[16])
+MaleSinglePrivWh.sens.age<-data.frame(matrix(rep(MaleSinglePrivWh.pred.vector,each=nm),nrow=nm))
+colnames(MaleSinglePrivWh.sens.age)<-names(newdat_training)
+MaleSinglePrivWh.sens.age[,14]<-mean.vector
+MaleSinglePrivWh.sens.age.probs<-predict(net.dat,MaleSinglePrivWh.sens.age)
+
+
+plot(mean.vector*(max(adult$age)-min(adult$age))+ min(adult$age),
+FemaleSinglePrivWh.sens.age.probs,ylim=c(0,0.8),type="l",xlab="age",
+ylab="estimated probability",main="Single White Male vs. Single White Female")
+
+points(mean.vector*(max(adult$age)-min(adult$age))+ min(adult$age),
+MaleSinglePrivWh.sens.age.probs,xlab="age",ylab="estimated probability" )
+```
+
+ Similer to the married group, there is a monotone relation between age and probability of income greater than 50K. For both genders, the probablity increase with age increase, the rate slow down after age 60 and reach stable. Two lines are parallel and there is a clear gap between two lines which indicates income inequality between gender. 
+
+```{r}
+plot(mean.vector*(max(adult$age)-min(adult$age))+ min(adult$age),
+FemaleMarriedPrivWh.sens.age.probs,ylim=c(0,0.8),type="l",xlab="age",
+ylab="estimated probability",main=" Male vs. Female")
+
+points(mean.vector*(max(adult$age)-min(adult$age))+ min(adult$age),
+MaleMarriedPrivWh.sens.age.probs,xlab="age",ylab="estimated probability" )
+
+lines(mean.vector*(max(adult$age)-min(adult$age))+ min(adult$age),
+BFemaleMarriedPrivWh.sens.age.probs,ylim=c(0,0.8),type="l",xlab="age",
+ylab="estimated probability",main="Male vs. Female")
+
+points(mean.vector*(max(adult$age)-min(adult$age))+ min(adult$age),
+BMaleMarriedPrivWh.sens.age.probs,xlab="age",ylab="estimated probability" )
+
+lines(mean.vector*(max(adult$age)-min(adult$age))+ min(adult$age),
+FemaleSinglePrivWh.sens.age.probs,ylim=c(0,0.8),type="l",xlab="age",
+ylab="estimated probability",main="Male vs. Female")
+
+points(mean.vector*(max(adult$age)-min(adult$age))+ min(adult$age),
+MaleSinglePrivWh.sens.age.probs,xlab="age",ylab="estimated probability" )
+```
+
+Based on the plots, sex modifies the relatioship between age and the output the most. There is some difference between married white and married black's probability of income greater than 50K, as white male and female tend to have a higher probability than black male and black female, and there is no big differnece between single white and married white. But there is a clear differnece between gender among all plots that female always have lower porbability than males.
+
+###b)
+```{r}
+m = dim(newdat_training)[2]
+means = NA
+for (i in 1:m)
+{
+means[i]=mean(newdat_training[,i])
+}
+
+EduFemaleMarriedPrivWh.pred.vector<-c(rep(0,5),rep(1,2),rep(0,5),1,
+means[14],means[15],means[16])
+mean.vector<-seq(0,1,0.01)
+nm<-length(mean.vector)
+EduFemaleMarriedPrivWh.sens.age<-data.frame(matrix(rep(EduFemaleMarriedPrivWh.pred.vector,each=nm),nrow=nm))
+colnames(EduFemaleMarriedPrivWh.sens.age)<-names(newdat_training)
+EduFemaleMarriedPrivWh.sens.age[,15]<-mean.vector
+EduFemaleMarriedPrivWh.sens.age.probs<-predict(net.dat,EduFemaleMarriedPrivWh.sens.age)
+
+
+EduMaleMarriedPrivWh.pred.vector<-c(1,rep(0,4),rep(1,2),rep(0,5),1,means[14],means[15],means[16])
+EduMaleMarriedPrivWh.sens.age<-data.frame(matrix(rep(EduMaleMarriedPrivWh.pred.vector,each=nm),nrow=nm))
+colnames(EduMaleMarriedPrivWh.sens.age)<-names(newdat_training)
+EduMaleMarriedPrivWh.sens.age[,15]<-mean.vector
+EduMaleMarriedPrivWh.sens.age.probs<-predict(net.dat,EduMaleMarriedPrivWh.sens.age)
+
+
+plot(mean.vector*(max(adult$education.num)-min(adult$education.num))+ min(adult$education.num),
+EduFemaleMarriedPrivWh.sens.age.probs,ylim=c(0,0.8),type="l",xlab="Education",
+ylab="estimated probability",main="Married white female vs. Married white male")
+
+points(mean.vector*(max(adult$education.num)-min(adult$education.num))+ min(adult$education.num),
+EduMaleMarriedPrivWh.sens.age.probs,xlab="Education",ylab="estimated probability" )
+```
+
+Points line is male, solid line is female. There is monotone relationship between edu.num and probability of income greater than 50K. With longer education years, there is a higher probability to get income greater than 50K. Male tend to have a greater probability than female with longer education, and the gap gets larger with longer education years.
+
+###change race to black
+```{r}
+m = dim(newdat_training)[2]
+means = NA
+for (i in 1:m)
+{
+means[i]=mean(newdat_training[,i])
+}
+
+BFemaleMarriedPrivWh.pred.vector<-c(rep(0,5),rep(1,2),rep(0,4),1,0,
+means[14],means[15],means[16])
+mean.vector<-seq(0,1,0.01)
+nm<-length(mean.vector)
+BFemaleMarriedPrivWh.sens.age<-data.frame(matrix(rep(BFemaleMarriedPrivWh.pred.vector,each=nm),nrow=nm))
+colnames(BFemaleMarriedPrivWh.sens.age)<-names(newdat_training)
+BFemaleMarriedPrivWh.sens.age[,15]<-mean.vector
+BFemaleMarriedPrivWh.sens.age.probs<-predict(net.dat,BFemaleMarriedPrivWh.sens.age)
+
+
+BMaleMarriedPrivWh.pred.vector<-c(1,rep(0,4),rep(1,2),rep(0,4),1,0,means[14],means[15],means[16])
+BMaleMarriedPrivWh.sens.age<-data.frame(matrix(rep(BMaleMarriedPrivWh.pred.vector,each=nm),nrow=nm))
+colnames(BMaleMarriedPrivWh.sens.age)<-names(newdat_training)
+BMaleMarriedPrivWh.sens.age[,15]<-mean.vector
+BMaleMarriedPrivWh.sens.age.probs<-predict(net.dat,BMaleMarriedPrivWh.sens.age)
+
+plot(mean.vector*(max(adult$education.num)-min(adult$education.num))+ min(adult$education.num),
+BFemaleMarriedPrivWh.sens.age.probs,ylim=c(0,0.8),type="l",xlab="Education",
+ylab="estimated probability",main="Married Black Male vs. Married Black Female")
+
+points(mean.vector*(max(adult$education.num)-min(adult$education.num))+ min(adult$education.num),
+BMaleMarriedPrivWh.sens.age.probs,xlab="age",ylab="estimated probability" )
+```
+
+The plot gives similar conclusion as white group. Points line is male, solid line is female. There is monotone relationship between edu.num and probability of income greater than 50K. With longer education years, there is a higher probability to get that much income. Male tend to have a greater probability than female for higher income and the gap gets larger as the education length gets larger. 
+
+###change married to single
+```{r}
+m = dim(newdat_training)[2]
+means = NA
+for (i in 1:m)
+{
+means[i]=mean(newdat_training[,i])
+}
+
+FemaleSinglePrivWh.pred.vector<-c(rep(0,6),rep(1,1),rep(0,5),1,
+means[14],means[15],means[16])
+mean.vector<-seq(0,1,0.01)
+nm<-length(mean.vector)
+FemaleSinglePrivWh.sens.age<-data.frame(matrix(rep(FemaleSinglePrivWh.pred.vector,each=nm),nrow=nm))
+colnames(FemaleSinglePrivWh.sens.age)<-names(newdat_training)
+FemaleSinglePrivWh.sens.age[,15]<-mean.vector
+FemaleSinglePrivWh.sens.age.probs<-predict(net.dat,FemaleSinglePrivWh.sens.age)
+
+
+MaleSinglePrivWh.pred.vector<-c(1,rep(0,5),rep(1,1),rep(0,5),1,means[14],means[15],means[16])
+MaleSinglePrivWh.sens.age<-data.frame(matrix(rep(MaleSinglePrivWh.pred.vector,each=nm),nrow=nm))
+colnames(MaleSinglePrivWh.sens.age)<-names(newdat_training)
+MaleSinglePrivWh.sens.age[,15]<-mean.vector
+MaleSinglePrivWh.sens.age.probs<-predict(net.dat,MaleSinglePrivWh.sens.age)
+
+
+plot(mean.vector*(max(adult$education.num)-min(adult$education.num))+ min(adult$education.num),
+FemaleSinglePrivWh.sens.age.probs,ylim=c(0,0.8),type="l",xlab="education",
+ylab="estimated probability",main="Single White Male vs. Single White Female")
+
+points(mean.vector*(max(adult$education.num)-min(adult$education.num))+ min(adult$education.num),
+MaleSinglePrivWh.sens.age.probs,xlab="age",ylab="estimated probability" )
+```
+
+The plot gives similar conclusion as married group. Points line is male, solid line is female. There is monotone relationship between edu.num and probability of income greater than 50K. With longer education years, there is a higher probability to get income greater than 50K. Male tend to have a greater probability than female for higher income and the gap gets larger as the education length gets larger.
+
+```{r}
+plot(mean.vector*(max(adult$education.num)-min(adult$education.num))+ min(adult$education.num),
+FemaleSinglePrivWh.sens.age.probs,ylim=c(0,0.8),type="l",xlab="education",
+ylab="estimated probability",main="Male vs. Female")
+
+points(mean.vector*(max(adult$education.num)-min(adult$education.num))+ min(adult$education.num),
+MaleSinglePrivWh.sens.age.probs,xlab="age",ylab="estimated probability" )
+
+lines(mean.vector*(max(adult$education.num)-min(adult$education.num))+ min(adult$education.num),
+BFemaleMarriedPrivWh.sens.age.probs,ylim=c(0,0.8),type="l",xlab="Education",
+ylab="estimated probability",main="Male vs.Female")
+
+points(mean.vector*(max(adult$education.num)-min(adult$education.num))+ min(adult$education.num),
+BMaleMarriedPrivWh.sens.age.probs,xlab="age",ylab="estimated probability" )
+
+lines(mean.vector*(max(adult$education.num)-min(adult$education.num))+ min(adult$education.num),
+EduFemaleMarriedPrivWh.sens.age.probs,ylim=c(0,0.8),type="l",xlab="Education",
+ylab="estimated probability",main="Male vs. Female")
+
+points(mean.vector*(max(adult$education.num)-min(adult$education.num))+ min(adult$education.num),
+EduMaleMarriedPrivWh.sens.age.probs,xlab="Education",ylab="estimated probability" )
+
+```
+
+Based on the plots, sex modifies the relatioship between education years and the output the most. There is difference between married white and married black's probability of income greater than 50K, as white male and female tend to have a higher probability than black male and black female, and there is no differnece between single white and married white. But there is a clear differnece between gender among all plots that female always have lower porbability than males. So marital status has no impact, race has some impact, and sex difference has impact in all plots.
+
+
+
+
+

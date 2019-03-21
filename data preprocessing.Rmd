@@ -1,0 +1,102 @@
+---
+title: "STAT4198 HW1 Min Yang"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+1.
+```{r}
+mydata <-read.table("~/Desktop/cars01.txt",header=TRUE)
+```
+
+Q2:yes, mydata is a data frame.
+```{r}
+class(mydata)
+```
+
+Q3:
+261 rows and 8 columns.
+```{r}
+dim(mydata)
+ncol(mydata)
+nrow(mydata)
+```
+
+Q4:
+list the names of the columns
+
+mpg,cylinders,cubicinches,hp,weightlbs,time-to-60,year,brand
+```{r}
+head(mydata)
+```
+5.
+```{r}
+names(mydata)
+```
+6. 
+```{r}
+mydata[[3]]
+```
+
+Q7: provide the line to retrieve 3rd column using the column name
+
+```{r}
+mydata[["cubicinches"]]
+```
+
+Q8:list elements of the second row.
+```{r}
+mydata[2,]
+```
+9.
+```{r}
+mydata$newcolumn<-NA
+```
+10.
+```{r}
+mydata$newcolumn<-mydata$brand=="US."
+```
+
+Q11:
+```{r}
+table(mydata$newcolumn)
+```
+12.
+```{r}
+newmydata<-rbind(mydata,list(30.5,4 , 98, 63, 2051, 17, 1978,   "US." ," TRUE"))
+```
+Q13: mean mpg is 23.1729
+```{r}
+mean(newmydata$mpg)
+```
+Q14:median mpg is 22
+```{r}
+median(newmydata$mpg)
+```
+Q15:
+Variance of mpg is 61.18022
+```{r}
+var(newmydata$mpg)
+```
+Q16:
+```{r}
+hist(mydata[["weightlbs"]],breaks=5, 
+     main="Histogram for weightlbs", 
+     xlab="weightlbs")
+```
+
+Q17:
+The first histogram has a frequency scale from 0 to 120, while the second histogram has a frequency scale from 0 to 30. The second plot on the right side has 16 breaks which is more specific than the first one. With 16 breaks,the second histogram can provide more details on the distribution of the frequency of "weightlbs".
+```{r}
+par(mfrow = c(1, 2))
+
+hist(mydata[["weightlbs"]],breaks=3, 
+     main="Histogram for weightlbs", 
+     xlab="weightlbs")
+
+hist(mydata[["weightlbs"]],breaks=16, 
+     main="Histogram for weightlbs", 
+     xlab="weightlbs" 
+     )
+```
+

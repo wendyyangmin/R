@@ -1,0 +1,465 @@
+---
+title: "4198 HW7"
+output:
+  word_document: default
+  pdf_document: default
+  html_notebook: default
+---
+
+###Q1.
+```{r}
+adult <-read.csv("~/desktop/adult.csv")
+adult <- adult[1:10000,]
+
+# Prepare the data
+levels(adult$marital.status)
+```
+```{r}
+levels(adult$marital.status)[2:4] <- "Married"
+levels(adult$marital.status)
+```
+
+```{r}
+adult$ms.married <- ifelse(adult$marital.status == "Married", 1, 0)
+adult$ms.neverm <- ifelse(adult$marital.status == "Never-married", 1, 0)
+adult$ms.sep <- ifelse(adult$marital.status == "Separated", 1, 0)
+adult$ms.widowed <- ifelse(adult$marital.status == "Widowed", 1, 0)
+```
+
+###2.
+```{r}
+levels(adult$race)
+adult$race.White <- ifelse(adult$race == "White", 1, 0)
+adult$race.Black <- ifelse(adult$race == "Black", 1, 0)
+```
+
+###3.
+```{r}
+adult$capnet <- adult$capital.gain-adult$capital.loss
+levels(adult$sex)
+adult$male <- ifelse(adult$sex == "Male", 1, 0)
+summary(adult)
+newdata<-adult[,c(1,5,13,15,16,17,18,19,20,21,22,23)]
+summary(newdata)
+
+```
+
+
+###4.
+```{r}
+newdata$income_g50K=c(rep(0, length(newdata$income)))
+
+for (i in 1:length(newdata$income)) {
+if(newdata$income[i]==">50K.")
+newdata$income_g50K[i]<-1
+}
+
+```
+
+###5.
+```{r}
+newdata <- as.data.frame(newdata[,-4])
+```
+
+###6.
+```{r}
+newdat_training<-newdata[1:8000,]
+newdat_testing<-newdata[8001:10000,]
+```
+
+7.
+```{r}
+logistic.model <- glm(income_g50K~., data = newdat_training, 
+family = binomial())
+
+summary(logistic.model)
+
+estimated_income_g50K<- predict(logistic.model, newdat_training, type = "response")
+misscls.train<-sum((estimated_income_g50K-newdat_training$income_g50K)^2)/
+length(newdat_training$income_g50K)
+misscls.train
+
+
+presdicted.testing <- predict(logistic.model, newdat_testing, type = "response")
+misscls.test<-sum((presdicted.testing-newdat_testing$income_g50K)^2)/
+length(newdat_testing$income_g50K)
+misscls.test
+```
+
+The training missclasification rate is 11.48836%, and the testing missclasfication rate is 10.94807%.
+
+###Q8.
+```{r}
+logistic.model <- glm(income_g50K~  poly(age, 2) + poly(education.num, 2)
++ poly(hours.per.week, 2) + poly(capnet,2) +ms.married + ms.neverm+     
+ ms.sep + ms.widowed + race.White+race.Black+male , data = newdat_training, 
+family = binomial())
+summary(logistic.model)
+estimated_income_g50K<- predict(logistic.model, newdat_training, type = "response")
+misscls.train<-sum((estimated_income_g50K-newdat_training$income_g50K)^2)/
+length(newdat_training$income_g50K)
+misscls.train
+
+
+presdicted.testing <- predict(logistic.model, newdat_testing, type = "response")
+misscls.test<-sum((presdicted.testing-newdat_testing$income_g50K)^2)/
+length(newdat_testing$income_g50K)
+misscls.test
+```
+
+The training missclasification rate is 11.01535%, and the testing missclasfication rate is 10.57526%. this model is better than before as its missclasification rate is smaller.
+
+###Q9.
+```{r}
+logistic.model <- glm(income_g50K~  poly(age, 2) + poly(education.num, 2)
++ poly(hours.per.week, 2) + poly(capnet,1) +ms.married + ms.neverm+     
+ ms.sep + ms.widowed + race.White+race.Black+male +
+race.White:male + male:ms.married  +age:male +  education.num:male + 
+hours.per.week:male + age:race.White+  education.num:race.White + 
+hours.per.week:race.White
+, data = newdat_training, 
+family = binomial())
+summary(logistic.model)
+
+estimated_income_g50K<- predict(logistic.model, newdat_training, type = "response")
+misscls.train<-sum((estimated_income_g50K-newdat_training$income_g50K)^2)/
+length(newdat_training$income_g50K)
+misscls.train
+
+presdicted.testing <- predict(logistic.model, newdat_testing, type = "response")
+misscls.test<-sum((presdicted.testing-newdat_testing$income_g50K)^2)/
+length(newdat_testing$income_g50K)
+misscls.test
+```
+
+The training missclassification rate is 10.87831%, and the testing missclassfication rate is 10.63782%. this model is better than before as its missclasification rate is even smaller.
+
+###Q10.
+```{r}
+library(MASS)
+set.seed(10)
+birthwt.step <- stepAIC(logistic.model, trace = 1, direction="both")
+```
+```{r}
+birthwt.step$anova
+```
+
+```{r}
+best.logistic.model <- glm(income_g50K ~ poly(age, 2) + poly(education.num, 2) + poly(hours.per.week, 
+    2) + poly(capnet, 1) + ms.married + race.White + male + ms.married:male + 
+    male:education.num + male:hours.per.week + race.White:age + 
+    race.White:education.num + race.White:hours.per.week, data = newdata, 
+family = binomial())
+summary(best.logistic.model )
+```
+
+```{r}
+estimated_income_g50K<- predict(best.logistic.model, newdat_training, type = "response")
+misscls.train<-sum((estimated_income_g50K-newdat_training$income_g50K)^2)/
+length(newdat_training$income_g50K)
+misscls.train
+
+presdicted.testing <- predict(best.logistic.model, newdat_testing, type = "response")
+misscls.test<-sum((presdicted.testing-newdat_testing$income_g50K)^2)/
+length(newdat_testing$income_g50K)
+misscls.test
+```
+
+Result model: Final Model:income_g50K ~ poly(age, 2) + poly(education.num, 2) + poly(hours.per.week,     2) + poly(capnet, 1) + ms.married + race.White + male + male:hours.per.week + race.White:age + race.White:hours.per.week
+
+This is the best model, as it has the smallest testing missclasification rate of 10.58026% which is smaller than any previous testing missclassfication rates, with a small training missclasification rate of 10.90029%.
+
+###Q11.
+```{r}
+best.logistic.model <- glm(income_g50K ~ poly(age, 2) + poly(education.num, 2) + poly(hours.per.week, 2) + poly(capnet, 1) + ms.married + race.White + male + ms.married:male +male:education.num + male:hours.per.week + race.White:age + race.White:education.num + race.White:hours.per.week+ education.num + race.Black:education.num, data = newdat_training, 
+family = binomial())
+summary(best.logistic.model )
+
+estimated_income_g50K<- predict(best.logistic.model, newdat_training, type = "response")
+misscls.train<-sum((estimated_income_g50K-newdat_training$income_g50K)^2)/
+length(newdat_training$income_g50K)
+misscls.train
+
+presdicted.testing <- predict(best.logistic.model, newdat_testing, type = "response")
+misscls.test<-sum((presdicted.testing-newdat_testing$income_g50K)^2)/
+length(newdat_testing$income_g50K)
+misscls.test
+```
+
+```{r}
+best.logistic.model <- glm(income_g50K ~ poly(age, 2) + poly(education.num, 2) + poly(hours.per.week, 2) + poly(capnet, 1) + ms.married + race.White + male + ms.married:male +male:education.num + male:hours.per.week + race.White:age + race.White:education.num + race.White:hours.per.week+ race.Black:education.num, data = newdat_training, 
+family = binomial())
+summary(best.logistic.model )
+
+estimated_income_g50K<- predict(best.logistic.model, newdat_training, type = "response")
+misscls.train<-sum((estimated_income_g50K-newdat_training$income_g50K)^2)/
+length(newdat_training$income_g50K)
+misscls.train
+
+presdicted.testing <- predict(best.logistic.model, newdat_testing, type = "response")
+misscls.test<-sum((presdicted.testing-newdat_testing$income_g50K)^2)/
+length(newdat_testing$income_g50K)
+misscls.test
+```
+
+```{r}
+best.logistic.model <- glm(income_g50K ~ poly(age, 2) + poly(education.num, 2) + poly(hours.per.week, 2) + poly(capnet, 1) + ms.married + race.White + male + ms.married:male +male:education.num + male:hours.per.week + race.White:age + race.White:education.num + race.White:hours.per.week+ race.Black:age + race.Black:education.num, data = newdat_training, 
+family = binomial())
+summary(best.logistic.model )
+
+estimated_income_g50K<- predict(best.logistic.model, newdat_training, type = "response")
+misscls.train<-sum((estimated_income_g50K-newdat_training$income_g50K)^2)/
+length(newdat_training$income_g50K)
+misscls.train
+
+presdicted.testing <- predict(best.logistic.model, newdat_testing, type = "response")
+misscls.test<-sum((presdicted.testing-newdat_testing$income_g50K)^2)/
+length(newdat_testing$income_g50K)
+misscls.test
+```
+
+```{r}
+best.logistic.model <- glm(income_g50K ~ poly(age, 2) + poly(education.num, 2) + poly(hours.per.week, 2) + poly(capnet, 1) + ms.married + race.White + male + ms.married:male +male:education.num + male:hours.per.week + race.White:age, data = newdat_training, 
+family = binomial())
+summary(best.logistic.model )
+
+estimated_income_g50K<- predict(best.logistic.model, newdat_training, type = "response")
+misscls.train<-sum((estimated_income_g50K-newdat_training$income_g50K)^2)/
+length(newdat_training$income_g50K)
+misscls.train
+
+presdicted.testing <- predict(best.logistic.model, newdat_testing, type = "response")
+misscls.test<-sum((presdicted.testing-newdat_testing$income_g50K)^2)/
+length(newdat_testing$income_g50K)
+misscls.test
+```
+
+After trying four other logistic regression model, although they all have a small missclasification rate around 10.61%, the best model is the following one with smallest missclasification:
+income_g50K ~ poly(age, 2) + poly(education.num, 2) + poly(hours.per.week, 
+    2) + poly(capnet, 1) + ms.married + race.White + male + ms.married:male + 
+    male:education.num + male:hours.per.week + race.White:age + 
+    race.White:education.num + race.White:hours.per.week
+    
+So this is my favorite model as it gives the lowest misclassfication rate.
+
+###Q12.
+####estimates of the parameters with training and testing combined
+```{r}
+best.logistic.model <- glm(income_g50K ~ poly(age, 2) + poly(education.num, 2) + poly(hours.per.week, 
+    2) + poly(capnet, 1) + ms.married + race.White + male + ms.married:male + 
+    male:education.num + male:hours.per.week + race.White:age + 
+    race.White:education.num + race.White:hours.per.week, data = newdata, 
+family = binomial())
+summary(best.logistic.model )
+
+```
+
+####estimates of the parameters with training data
+```{r}
+best.logistic.model <- glm(income_g50K ~ poly(age, 2) + poly(education.num, 2) + poly(hours.per.week, 
+    2) + poly(capnet, 1) + ms.married + race.White + male + ms.married:male + 
+    male:education.num + male:hours.per.week + race.White:age + 
+    race.White:education.num + race.White:hours.per.week, data = newdat_training, 
+family = binomial())
+summary(best.logistic.model )
+```
+
+```{r}
+#use newdata which contains all 10000 data
+estimated_income_g50K<- predict(best.logistic.model, newdata, type = "response")
+misscls<-sum((estimated_income_g50K-newdata$income_g50K)^2)/
+length(newdata$income_g50K)
+misscls
+```
+
+The estimates of the parameters for entire data are very similar to those with training data. With a missclasification rate of 10.83%, it is expected that there is no big difference in the estimates of the parameters. 
+
+###Q13.
+```{r}
+library(boot)
+```
+
+```{r}
+cv.err <- cv.glm(newdata, best.logistic.model,K=10)#K-fold
+cv.err$delta
+```
+
+The raw cross-validation estimate of prediction error is 10.90853%, and the adjusted cross-validation estimate of prediction error is 10.90514%. The result from cv function is a little higher than the result from I get for training and testing data. The difference occurs as the adjustment is used to compensate for the bias introduced without using leave-one-out cross-validation, thus increase the error a litte. 
+
+###Q14.
+Age 
+```{r}
+m<-300 # number of data points in prediction
+attach(newdata)
+age_predict<-min(age)+ (max(age)-min(age))*seq(0,1,1/(m-1))
+FemaleMarriedWh.age <-data.frame(age=age_predict,education.num=rep(mean(education.num),length(age_predict)),
+hours.per.week=rep(mean(hours.per.week),length(age_predict)) , 
+ms.married= rep(1,length(age_predict))  , ms.neverm=rep(0,length(age_predict)),     
+ ms.sep=rep(0,length(age_predict)), ms.widowed = rep(0,length(age_predict)) ,
+ race.White= rep(1,length(age_predict)) ,
+ race.Black = rep(0,length(age_predict))  , capnet=rep(mean(capnet),
+length(age_predict)) , male =rep(0,length(age_predict)),
+income_g50K= rep(0,length(age_predict))) 
+
+FemaleMarriedWh.age.probs<-predict(best.logistic.model, FemaleMarriedWh.age,type = "response")
+
+FemaleMarriedBlk.age <-data.frame(age=age_predict,education.num=rep(mean(education.num),length(age_predict)),
+hours.per.week=rep(mean(hours.per.week),length(age_predict)) , 
+ms.married= rep(1,length(age_predict))  , ms.neverm=rep(0,length(age_predict)),     
+ ms.sep=rep(0,length(age_predict)), ms.widowed = rep(0,length(age_predict)) ,
+ race.White= rep(0,length(age_predict)) ,
+ race.Black = rep(1,length(age_predict))  , capnet=rep(mean(capnet),
+length(age_predict)) , male =rep(0,length(age_predict)),
+income_g50K= rep(0,length(age_predict))) 
+
+FemaleMarriedBlk.age.probs<-predict(best.logistic.model, FemaleMarriedBlk.age,type = "response")
+
+MaleMarriedWh.age <-data.frame(age=age_predict,education.num=rep(mean(education.num),length(age_predict)),
+hours.per.week=rep(mean(hours.per.week),length(age_predict)) , 
+ms.married= rep(1,length(age_predict))  , ms.neverm=rep(0,length(age_predict)),     
+ ms.sep=rep(0,length(age_predict)), ms.widowed = rep(0,length(age_predict)) ,
+ race.White= rep(1,length(age_predict)) ,
+ race.Black = rep(0,length(age_predict))  , capnet=rep(mean(capnet),
+length(age_predict)) , male =rep(1,length(age_predict)),
+income_g50K= rep(0,length(age_predict))) 
+
+MaleMarriedWh.age.probs<-predict(best.logistic.model, MaleMarriedWh.age,type = "response")
+
+MaleMarriedBlk.age <-data.frame(age=age_predict,education.num=rep(mean(education.num),length(age_predict)),
+hours.per.week=rep(mean(hours.per.week),length(age_predict)) , 
+ms.married= rep(1,length(age_predict))  , ms.neverm=rep(0,length(age_predict)),     
+ ms.sep=rep(0,length(age_predict)), ms.widowed = rep(0,length(age_predict)) ,
+ race.White= rep(0,length(age_predict)) ,
+ race.Black = rep(1,length(age_predict))  , capnet=rep(mean(capnet),
+length(age_predict)) , male =rep(1,length(age_predict)),
+income_g50K= rep(0,length(age_predict))) 
+
+MaleMarriedBlk.age.probs<-predict(best.logistic.model, MaleMarriedBlk.age,type = "response")
+
+par(mfrow=(c(2,2)))
+
+plot(age_predict,FemaleMarriedWh.age.probs,type="b", pch=19, col="red",
+xlab="age",
+ylab="estimated probability",ylim=c(0,0.75),main="White Female vs White Male")
+lines(age_predict,
+MaleMarriedWh.age.probs,pch=18, col="blue", type="b", lty=2,
+xlab="age",ylab="estimated probability" )
+legend(20, 0.75, legend=c("FemaleMarriedWh", "MaleMarriedWh.age.probs"),
+       col=c("red", "blue"), lty=1:2, cex=0.8)
+
+plot(age_predict,FemaleMarriedWh.age.probs,xlab="age",
+type="b", pch=19, col="red",
+ylab="estimated probability",ylim=c(0,0.75),main="White Female vs Black Female")
+lines(age_predict,FemaleMarriedBlk.age.probs,pch=18, col="blue", type="b", lty=2,
+xlab="age",ylab="estimated probability" )
+legend(20, 0.75, legend=c("FemaleMarriedWh", "FemaleMarriedBlk"),
+       col=c("red", "blue"), lty=1:2, cex=0.8)
+
+plot(age_predict,FemaleMarriedBlk.age.probs,xlab="age",
+type="b", pch=19, col="red",
+ylab="estimated probability",ylim=c(0,0.75),main="Black Female vs Black Male")
+lines(age_predict,MaleMarriedBlk.age.probs,pch=18, col="blue", type="b", lty=2,
+xlab="age",ylab="estimated probability" )
+legend(20, 0.75, legend=c("FemaleMarriedBlk", "MaleMarriedBlk"),
+       col=c("red", "blue"), lty=1:2, cex=0.8)
+
+plot(age_predict,MaleMarriedWh.age.probs,xlab="age",
+type="b", pch=19, col="red",
+ylab="estimated probability",ylim=c(0,0.75),main="White Male vs Black Male")
+lines(age_predict,MaleMarriedBlk.age.probs,pch=18, col="blue", type="b", lty=2,
+xlab="age",ylab="estimated probability" )
+legend(20, 0.75, legend=c("MaleMarriedWh",
+ "MaleMarriedBlk"),
+       col=c("red", "blue"), lty=1:2, cex=0.8)
+```
+
+From the plots, all cases show a somewhat normal distribution, with younger age and elder age have a lower probability and middle age has a higher probability. Married white female has a overall higher probability than married white male, same to black male and female. White female has a higher probability than black female, while the two lines interact in elder age, same as the white male and balck male group. So gender modified the relationship between probability of income>=50K and age more than race. It has a similar pattern to neural network one, as both models show an increase of probability with age increase then followed by a decrease, and gender modified more in the neural network model.
+
+Education
+```{r}
+m<-300 # number of data points in prediction
+attach(newdata)
+edu_predict<-min(education.num)+ (max(education.num)-min(education.num))*seq(0,1,1/(m-1))
+FemaleMarriedWh.edu <-data.frame(education.num=edu_predict,age=rep(mean(age),length(edu_predict)),
+hours.per.week=rep(mean(hours.per.week),length(edu_predict)) , 
+ms.married= rep(1,length(edu_predict))  , ms.neverm=rep(0,length(edu_predict)),     
+ ms.sep=rep(0,length(edu_predict)), ms.widowed = rep(0,length(edu_predict)) ,
+ race.White= rep(1,length(edu_predict)) ,
+ race.Black = rep(0,length(edu_predict))  , capnet=rep(mean(capnet),
+length(edu_predict)) , male =rep(0,length(edu_predict)),
+income_g50K= rep(0,length(edu_predict))) 
+
+FemaleMarriedWh.edu.probs<-predict(best.logistic.model, FemaleMarriedWh.edu,type = "response")
+
+FemaleMarriedBlk.edu <-data.frame(education.num=edu_predict,age=rep(mean(age),length(edu_predict)),
+hours.per.week=rep(mean(hours.per.week),length(edu_predict)) , 
+ms.married= rep(1,length(edu_predict))  , ms.neverm=rep(0,length(edu_predict)),     
+ ms.sep=rep(0,length(edu_predict)), ms.widowed = rep(0,length(edu_predict)) ,
+ race.White= rep(0,length(edu_predict)) ,
+ race.Black = rep(1,length(edu_predict))  , capnet=rep(mean(capnet),
+length(edu_predict)) , male =rep(0,length(edu_predict)),
+income_g50K= rep(0,length(edu_predict))) 
+
+FemaleMarriedBlk.edu.probs<-predict(best.logistic.model, FemaleMarriedBlk.edu,type = "response")
+
+MaleMarriedWh.edu <-data.frame(education.num=edu_predict,age=rep(mean(age),length(edu_predict)),
+hours.per.week=rep(mean(hours.per.week),length(edu_predict)) , 
+ms.married= rep(1,length(edu_predict))  , ms.neverm=rep(0,length(edu_predict)),     
+ ms.sep=rep(0,length(edu_predict)), ms.widowed = rep(0,length(edu_predict)) ,
+ race.White= rep(1,length(edu_predict)) ,
+ race.Black = rep(0,length(edu_predict))  , capnet=rep(mean(capnet),
+length(edu_predict)) , male =rep(1,length(edu_predict)),
+income_g50K= rep(0,length(edu_predict))) 
+
+MaleMarriedWh.edu.probs<-predict(best.logistic.model, MaleMarriedWh.edu,type = "response")
+
+MaleMarriedBlk.edu <-data.frame(education.num=edu_predict,age=rep(mean(age),length(edu_predict)),
+hours.per.week=rep(mean(hours.per.week),length(edu_predict)) , 
+ms.married= rep(1,length(edu_predict))  , ms.neverm=rep(0,length(edu_predict)),     
+ ms.sep=rep(0,length(edu_predict)), ms.widowed = rep(0,length(edu_predict)) ,
+ race.White= rep(0,length(edu_predict)) ,
+ race.Black = rep(1,length(edu_predict))  , capnet=rep(mean(capnet),
+length(edu_predict)) , male =rep(1,length(edu_predict)),
+income_g50K= rep(0,length(edu_predict))) 
+
+MaleMarriedBlk.edu.probs<-predict(best.logistic.model, MaleMarriedBlk.edu,type = "response")
+
+par(mfrow=(c(2,2)))
+
+plot(edu_predict,FemaleMarriedWh.edu.probs,type="b", pch=19, col="red",
+xlab="education",
+ylab="estimated probability",ylim=c(0,0.75),main="White Female vs White Male")
+lines(edu_predict,
+MaleMarriedWh.edu.probs,pch=18, col="blue", type="b", lty=2,
+xlab="education",ylab="estimated probability" )
+legend(20, 0.75, legend=c("FemaleMarriedWh", "MaleMarriedWh.edu.probs"),
+       col=c("red", "blue"), lty=1:2, cex=0.8)
+
+plot(edu_predict,FemaleMarriedWh.edu.probs,xlab="education",
+type="b", pch=19, col="red",
+ylab="estimated probability",ylim=c(0,0.75),main="White Female vs Black Female")
+lines(edu_predict,FemaleMarriedBlk.edu.probs,pch=18, col="blue", type="b", lty=2,
+xlab="education",ylab="estimated probability" )
+legend(20, 0.75, legend=c("FemaleMarriedWh", "FemaleMarriedBlk"),
+       col=c("red", "blue"), lty=1:2, cex=0.8)
+
+plot(edu_predict,FemaleMarriedBlk.edu.probs,xlab="education",
+type="b", pch=19, col="red",
+ylab="estimated probability",ylim=c(0,0.75),main="Black Female vs Black Male")
+lines(edu_predict,MaleMarriedBlk.edu.probs,pch=18, col="blue", type="b", lty=2,
+xlab="education",ylab="estimated probability" )
+legend(20, 0.75, legend=c("FemaleMarriedBlk", "MaleMarriedBlk"),
+       col=c("red", "blue"), lty=1:2, cex=0.8)
+
+plot(edu_predict,MaleMarriedWh.edu.probs,xlab="education",
+type="b", pch=19, col="red",
+ylab="estimated probability",ylim=c(0,0.75),main="White Male vs Black Male")
+lines(edu_predict,MaleMarriedBlk.edu.probs,pch=18, col="blue", type="b", lty=2,
+xlab="education",ylab="estimated probability" )
+legend(20, 0.75, legend=c("MaleMarriedWh",
+ "MaleMarriedBlk"),
+       col=c("red", "blue"), lty=1:2, cex=0.8)
+```
+
+From the plots, all cases show a increasing probablity as education time increases. Married white female has a slightly less probabiltiy before year 5, and then the probability is greater than married white male, same to black male and female. White female has a higher probability than black female, and it has a larger gap with education number increase, same as the white male and balck male group. Since there is a larger gap between white female vs black female and larger gap between white male vs black male than the gender comparison. The race modified the relationship between probability of income>=50K and education.num more than gender. It has a similar pattern to neural network one, and race also modifies more in the nueral network one. 
+

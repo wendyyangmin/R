@@ -1,0 +1,168 @@
+---
+title: "STAT4181 hw4 Min Yang"
+output:
+  word_document: default
+  html_notebook: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+###A
+```{r}
+library(astsa)
+library(base)
+ts.plot(cmort)
+```
+
+2.
+```{r}
+acf(cmort)
+pacf(cmort)
+```
+
+3.
+```{r}
+x <- cmort
+AIC_arma_seq <- function(x, max_p=5,
+                              max_q=5
+                              ){
+  
+MA_AIC<-rep(0,max_q)
+  for(i in 1:max_q){
+    temp <- arima(x,order=c(0,0,i))
+    MA_AIC[i]<-AIC(temp)
+  }
+  
+AR_AIC <- rep(0,max_p)
+  for(i in 1:max_p){
+    temp <- arima(x,order=c(i,0,0))
+   AR_AIC[i]<-AIC(temp)
+
+  }
+  
+  return(list(MA_AIC,AR_AIC))
+  
+}
+
+AIC_arma_seq(x,max_p=5,max_q=5)
+```
+
+4.
+```{r}
+AIC_arma_seq <- function(x,
+                              max_p=10,
+                              max_q=10
+                              ){
+  
+MA_AIC<-rep(0,max_q)
+  for(i in 1:max_q){
+    temp <- arima(x,order=c(0,0,i))
+    MA_AIC[i]<-AIC(temp)
+  }
+  
+AR_AIC <- rep(0,max_p)
+  for(i in 1:max_p){
+    temp <- arima(x,order=c(i,0,0))
+   AR_AIC[i]<-AIC(temp)
+
+  }
+  
+  return(list(AR_AIC, MA_AIC))
+  
+}
+
+AIC_arma_seq(cmort,max_p=10,max_q=10)
+```
+
+With the smalles value of 3217.429, the best model is AR[2].
+
+```{r}
+predict(arima(cmort,order=c(2,0,0)),n.ahead=12)
+```
+
+###B
+####1.
+```{r}
+bit<-read.csv("~/Desktop/HW2Bitcoin.csv")
+bit$Date <- as.Date(bit$Date, format="%m / %d / %y ")
+```
+
+####2.
+```{r}
+library(zoo)
+library(xts)
+bit_zoo <- zoo(bit$Last,order.by = bit$Date)
+bit_xts <- as.xts(bit_zoo)
+bit_log<- diff(log(bit_xts), lag = 1) 
+plot.ts(bit_log)
+```
+
+###3.
+```{r}
+bitpre17 <- na.omit(bit_log["/2016"])
+str(bitpre17)#check if get rid of NA
+```
+
+###4.
+```{r}
+AR_MAX_ORDER <- 10
+AR_aic <- rep(0,AR_MAX_ORDER)
+for(i in 1:AR_MAX_ORDER){
+  temp <- arima(bitpre17,order = c(i,0,0))
+  AR_aic[i] <- AIC(temp)
+}
+AR_aic
+```
+```{r}
+MA_MAX_ORDER <- 10
+MA_aic <- rep(0,MA_MAX_ORDER)
+for(i in 1:MA_MAX_ORDER){
+  temp <- arima(bitpre17,order = c(0,0,i))
+  MA_aic[i] <- AIC(temp)
+}
+MA_aic
+```
+
+With AIC of -3900.012, the best model is MA[9].
+
+####5.
+
+```{r}
+bit_logg <- na.omit(bit_log)
+TT <- length(bit_logg)
+T0 <- 974 #975 data before 2017 - 1 data NA
+```
+
+```{r}
+#I directly plug in the data and order in the function
+backtest_arma <- function(bit_logg, 
+arima_order=c(0,0,9),
+T0=975){
+eps <- coredata(bit_logg)
+eps[1:T0] <- 0
+for(t in (T0+1):TT){ #at every time step
+
+#evaluate previous prediction
+if(t!=(T0+1)){
+eps[t] <- coredata(prev_pred)-coredata(bit_logg[t])
+}
+
+#fit model to past data
+temp_model <- arima(bit_logg[1:t],order=arima_order)
+
+#predict from the model
+prev_pred <- predict(temp_model,n_ahead=1)$pred
+}
+
+eps <- eps[(T0+1):TT]
+
+return(c(eps))
+
+}
+plot(c(eps))
+```
+
+From the plot, all eps are within 0.2, so I conclude this model performs pretty well.
+
+
